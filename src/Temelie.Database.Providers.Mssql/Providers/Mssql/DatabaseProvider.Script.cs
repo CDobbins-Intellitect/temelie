@@ -758,9 +758,29 @@ GO");
         return new DatabaseObjectScript(generateCreateScript, generateDropScript);
     }
 
-    public override string GetRenameScript(TableModel model, string newTableName)
+    public override string GetRenameScript(TableModel model, string newTableName, bool dropNewTableIfExists = false)
     {
-        return $"EXEC sp_rename '{model.SchemaName}.{model.TableName}', '{newTableName}'";
+        var schema = string.IsNullOrEmpty(model.SchemaName) ? "dbo" : model.SchemaName;
+        var sb = new StringBuilder();
+        if (dropNewTableIfExists)
+        {
+            sb.AppendLine($@"IF EXISTS
+    (
+        SELECT
+            1
+        FROM
+            sys.tables INNER JOIN
+            sys.schemas ON
+                tables.schema_id = schemas.schema_id
+        WHERE
+            tables.name = '{newTableName}' AND
+            schemas.name = '{schema}'
+    )");
+            sb.AppendLine($"    DROP{(model.IsExternal ? " EXTERNAL " : " ")}TABLE {QuoteCharacterStart}{schema}{QuoteCharacterEnd}.{QuoteCharacterStart}{newTableName}{QuoteCharacterEnd}");
+            sb.AppendLine("GO");
+        }
+        sb.AppendLine($"EXEC sp_rename '{schema}.{model.TableName}', '{newTableName}'");
+        return sb.ToString();
     }
 
     public override IDatabaseObjectScript GetScript(TriggerModel model)

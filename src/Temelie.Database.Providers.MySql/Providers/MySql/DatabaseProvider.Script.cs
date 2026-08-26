@@ -145,9 +145,15 @@ public partial class DatabaseProvider
         return new DatabaseObjectScript(generateCreateScript, generateDropScript);
     }
 
-    public override string GetRenameScript(TableModel model, string newTableName)
+    public override string GetRenameScript(TableModel model, string newTableName, bool dropNewTableIfExists = false)
     {
-        return $"RENAME TABLE {QuoteCharacterStart}{model.TableName}{QuoteCharacterEnd} TO {QuoteCharacterStart}{newTableName}{QuoteCharacterEnd};";
+        var sb = new StringBuilder();
+        if (dropNewTableIfExists)
+        {
+            sb.AppendLine($"DROP TABLE IF EXISTS {QuoteCharacterStart}{newTableName}{QuoteCharacterEnd};");
+        }
+        sb.AppendLine($"RENAME TABLE {QuoteCharacterStart}{model.TableName}{QuoteCharacterEnd} TO {QuoteCharacterStart}{newTableName}{QuoteCharacterEnd};");
+        return sb.ToString();
     }
 
     public override IDatabaseObjectScript GetScript(CheckConstraintModel model)
